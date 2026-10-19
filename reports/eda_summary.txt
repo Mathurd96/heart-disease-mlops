@@ -1,0 +1,54 @@
+Shape: (303, 14)
+
+Missing values:
+age         0
+sex         0
+cp          0
+trestbps    0
+chol        0
+fbs         0
+restecg     0
+thalach     0
+exang       0
+oldpeak     0
+slope       0
+ca          4
+thal        2
+target      0
+
+Class balance:
+target
+0    0.541
+1    0.459
+
+Describe:
+          count    mean    std    min    25%    50%    75%    max
+age       303.0   54.44   9.04   29.0   48.0   56.0   61.0   77.0
+sex       303.0    0.68   0.47    0.0    0.0    1.0    1.0    1.0
+cp        303.0    3.16   0.96    1.0    3.0    3.0    4.0    4.0
+trestbps  303.0  131.69  17.60   94.0  120.0  130.0  140.0  200.0
+chol      303.0  246.69  51.78  126.0  211.0  241.0  275.0  564.0
+fbs       303.0    0.15   0.36    0.0    0.0    0.0    0.0    1.0
+restecg   303.0    0.99   0.99    0.0    0.0    1.0    2.0    2.0
+thalach   303.0  149.61  22.88   71.0  133.5  153.0  166.0  202.0
+exang     303.0    0.33   0.47    0.0    0.0    0.0    1.0    1.0
+oldpeak   303.0    1.04   1.16    0.0    0.0    0.8    1.6    6.2
+slope     303.0    1.60   0.62    1.0    1.0    2.0    2.0    3.0
+ca        299.0    0.67   0.94    0.0    0.0    0.0    1.0    3.0
+thal      301.0    4.73   1.94    3.0    3.0    3.0    7.0    7.0
+target    303.0    0.46   0.50    0.0    0.0    0.0    1.0    1.0
+
+Top correlations with target:
+thal        0.526
+ca          0.460
+exang       0.432
+oldpeak     0.425
+thalach    -0.417
+cp          0.414
+slope       0.339
+sex         0.277
+age         0.223
+restecg     0.169
+trestbps    0.151
+chol        0.085
+fbs         0.025

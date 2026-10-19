@@ -1,0 +1,85 @@
+{
+  "uid": "heart-api",
+  "title": "Heart Disease API",
+  "tags": ["mlops", "heart-disease"],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "10s",
+  "time": {"from": "now-30m", "to": "now"},
+  "panels": [
+    {
+      "id": 1, "type": "stat", "title": "Model loaded",
+      "gridPos": {"h": 4, "w": 4, "x": 0, "y": 0},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "targets": [{"expr": "min(model_loaded)", "refId": "A"}],
+      "fieldConfig": {"defaults": {
+        "mappings": [{"type": "value", "options": {"0": {"text": "NO", "color": "red"}, "1": {"text": "YES", "color": "green"}}}],
+        "thresholds": {"mode": "absolute", "steps": [{"color": "red", "value": null}, {"color": "green", "value": 1}]}}}
+    },
+    {
+      "id": 2, "type": "stat", "title": "Total requests",
+      "gridPos": {"h": 4, "w": 5, "x": 4, "y": 0},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "targets": [{"expr": "sum(api_requests_total)", "refId": "A"}]
+    },
+    {
+      "id": 3, "type": "stat", "title": "Predictions made",
+      "gridPos": {"h": 4, "w": 5, "x": 9, "y": 0},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "targets": [{"expr": "sum(model_predictions_total)", "refId": "A"}]
+    },
+    {
+      "id": 4, "type": "stat", "title": "Error ratio (5m, 4xx+5xx)",
+      "gridPos": {"h": 4, "w": 5, "x": 14, "y": 0},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "targets": [{"expr": "sum(rate(api_requests_total{status=~\"[45]..\"}[5m])) / clamp_min(sum(rate(api_requests_total[5m])), 1e-9)", "refId": "A"}],
+      "fieldConfig": {"defaults": {"unit": "percentunit",
+        "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "orange", "value": 0.05}, {"color": "red", "value": 0.2}]}}}
+    },
+    {
+      "id": 5, "type": "stat", "title": "In-flight requests",
+      "gridPos": {"h": 4, "w": 5, "x": 19, "y": 0},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "targets": [{"expr": "sum(api_requests_in_progress)", "refId": "A"}]
+    },
+    {
+      "id": 6, "type": "timeseries", "title": "Request rate by endpoint (req/s)",
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 4},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "targets": [{"expr": "sum by (endpoint) (rate(api_requests_total[1m]))", "legendFormat": "{{endpoint}}", "refId": "A"}],
+      "fieldConfig": {"defaults": {"unit": "reqps"}}
+    },
+    {
+      "id": 7, "type": "timeseries", "title": "Latency percentiles, /predict (s)",
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 4},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "targets": [
+        {"expr": "histogram_quantile(0.50, sum by (le) (rate(api_request_latency_seconds_bucket{endpoint=\"/predict\"}[5m])))", "legendFormat": "p50", "refId": "A"},
+        {"expr": "histogram_quantile(0.95, sum by (le) (rate(api_request_latency_seconds_bucket{endpoint=\"/predict\"}[5m])))", "legendFormat": "p95", "refId": "B"},
+        {"expr": "histogram_quantile(0.99, sum by (le) (rate(api_request_latency_seconds_bucket{endpoint=\"/predict\"}[5m])))", "legendFormat": "p99", "refId": "C"}
+      ],
+      "fieldConfig": {"defaults": {"unit": "s"}}
+    },
+    {
+      "id": 8, "type": "timeseries", "title": "Responses by status code (req/s)",
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 12},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "targets": [{"expr": "sum by (status) (rate(api_requests_total[1m]))", "legendFormat": "{{status}}", "refId": "A"}],
+      "fieldConfig": {"defaults": {"unit": "reqps"}}
+    },
+    {
+      "id": 9, "type": "piechart", "title": "Predictions by class (last 1h)",
+      "gridPos": {"h": 8, "w": 6, "x": 12, "y": 12},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "targets": [{"expr": "sum by (label) (increase(model_predictions_total[1h]))", "legendFormat": "{{label}}", "refId": "A"}]
+    },
+    {
+      "id": 10, "type": "timeseries", "title": "Mean prediction confidence (model drift signal)",
+      "gridPos": {"h": 8, "w": 6, "x": 18, "y": 12},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "targets": [{"expr": "sum(rate(model_prediction_confidence_sum[5m])) / clamp_min(sum(rate(model_prediction_confidence_count[5m])), 1e-9)", "legendFormat": "mean confidence", "refId": "A"}],
+      "fieldConfig": {"defaults": {"unit": "percentunit", "min": 0.5, "max": 1}}
+    }
+  ]
+}

@@ -1,0 +1,170 @@
+name: CI/CD
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  PYTHON_VERSION: "3.12"
+  IMAGE_NAME: heart-disease-api
+  MLFLOW_DISABLE_AGENT_HINT: "1"
+
+jobs:
+  # ------------------------------------------------------------------ 1. lint
+  lint:
+    name: Lint (flake8 + black)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+          cache-dependency-path: requirements-dev.txt
+      - run: pip install flake8==7.4.1 black==26.10.1
+      - name: flake8
+        run: flake8 . --count --statistics
+      - name: black (format check)
+        run: black --check --diff .
+
+  # ------------------------------------------------------------------ 2. test
+  test:
+    name: Unit tests
+    runs-on: ubuntu-latest
+    needs: lint
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+          cache-dependency-path: requirements-dev.txt
+      - run: pip install -r requirements-dev.txt && pip install -e .
+      - name: pytest with coverage (fails the build on any test error)
+        run: |
+          pytest --junitxml=pytest-report.xml \
+                 --cov=src/heart --cov-report=xml --cov-report=term-missing \
+                 --cov-fail-under=80
+      - name: Upload test reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-reports
+          path: |
+            pytest-report.xml
+            coverage.xml
+
+  # ----------------------------------------------------------------- 3. train
+  train:
+    name: Data + EDA + model training
+    runs-on: ubuntu-latest
+    needs: test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+          cache-dependency-path: requirements.txt
+      - run: pip install -r requirements.txt && pip install -e .
+      - name: Download and clean dataset
+        run: |
+          # If UCI is unreachable the committed data/processed/heart_clean.csv is used.
+          python scripts/download_data.py || echo "::warning::UCI download failed; using committed cleaned CSV"
+          test -f data/processed/heart_clean.csv
+      - name: EDA figures
+        run: python scripts/eda.py
+      - name: Train, tune and track with MLflow
+        run: python -m heart.train
+      - name: Training summary
+        run: |
+          {
+            echo "### Model comparison"
+            python -c "import pandas as pd; print(pd.read_csv('reports/model_comparison.csv').round(3).to_markdown(index=False))" 2>/dev/null \
+              || cat reports/model_comparison.csv
+            echo
+            echo "Selected model metadata:"
+            echo '```json'
+            cat models/model_metadata.json
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+      - name: Upload model
+        uses: actions/upload-artifact@v4
+        with:
+          name: trained-model
+          path: models/
+      - name: Upload reports, figures and MLflow store
+        uses: actions/upload-artifact@v4
+        with:
+          name: training-reports
+          path: |
+            reports/
+            mlflow.db
+            mlruns/
+            mlartifacts/
+          if-no-files-found: warn
+
+  # ---------------------------------------------------------------- 4. docker
+  docker:
+    name: Build and smoke-test container
+    runs-on: ubuntu-latest
+    needs: train
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fetch the model trained in this run
+        uses: actions/download-artifact@v4
+        with:
+          name: trained-model
+          path: models/
+      - name: Build image
+        run: docker build -t $IMAGE_NAME:ci .
+      - name: Run container
+        run: docker run -d --name api -p 8000:8000 $IMAGE_NAME:ci
+      - name: Wait for health check
+        run: |
+          for i in $(seq 1 30); do
+            if curl -sf http://localhost:8000/health; then echo; exit 0; fi
+            sleep 2
+          done
+          echo "Container never became healthy"; docker logs api; exit 1
+      - name: Smoke test /predict
+        run: |
+          curl -sf -X POST http://localhost:8000/predict \
+            -H 'Content-Type: application/json' \
+            -d '{"age":63,"sex":1,"cp":4,"trestbps":145,"chol":233,"fbs":1,"restecg":2,"thalach":150,"exang":0,"oldpeak":2.3,"slope":3,"ca":0,"thal":6}' \
+            | tee response.json
+          python -c "import json; r=json.load(open('response.json')); assert r['prediction'] in (0,1) and 0.5<=r['confidence']<=1, r"
+      - name: Metrics endpoint responds
+        run: curl -sf http://localhost:8000/metrics | grep -q api_requests_total
+      - name: Container logs
+        if: always()
+        run: docker logs api | tee container.log
+      - name: Upload container log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: container-log
+          path: container.log
+      - name: Log in to GHCR
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Push image to GHCR
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: |
+          REPO=$(echo "ghcr.io/${{ github.repository_owner }}/$IMAGE_NAME" | tr '[:upper:]' '[:lower:]')
+          docker tag $IMAGE_NAME:ci $REPO:latest
+          docker tag $IMAGE_NAME:ci $REPO:${{ github.sha }}
+          docker push $REPO:latest
+          docker push $REPO:${{ github.sha }}

@@ -1,0 +1,20 @@
+# Apply everything (except the optional ingress) with:  kubectl apply -k k8s/
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: heart-mlops
+resources:
+  - namespace.yaml
+  - deployment.yaml
+  - service.yaml
+  - hpa.yaml
+  - monitoring/prometheus.yaml
+  - monitoring/grafana.yaml
+
+# Builds the `grafana-dashboard` ConfigMap from the dashboard JSON (single
+# source of truth, also mounted by monitoring/docker-compose.yml).
+configMapGenerator:
+  - name: grafana-dashboard
+    files:
+      - monitoring/heart-api-dashboard.json
+generatorOptions:
+  disableNameSuffixHash: true

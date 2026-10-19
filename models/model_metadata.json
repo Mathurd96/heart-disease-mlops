@@ -1,0 +1,46 @@
+{
+  "model_name": "logreg_baseline",
+  "trained_at": "2026-10-16T00:18:48+00:00",
+  "mlflow_run_id": "bab4caab16f240919c8e1c567103471d",
+  "mlflow_parent_run_id": "6a5486d17f8d405eb10983a64e7cf48d",
+  "sklearn_version": "1.9.1",
+  "python_version": "3.12.9",
+  "features": [
+    "age",
+    "trestbps",
+    "chol",
+    "thalach",
+    "oldpeak",
+    "ca",
+    "sex",
+    "cp",
+    "fbs",
+    "restecg",
+    "exang",
+    "slope",
+    "thal"
+  ],
+  "best_params": {
+    "C": 0.1
+  },
+  "metrics": {
+    "cv_accuracy_mean": 0.8511,
+    "cv_accuracy_std": 0.025,
+    "cv_precision_mean": 0.8776,
+    "cv_precision_std": 0.0606,
+    "cv_recall_mean": 0.7921,
+    "cv_recall_std": 0.0482,
+    "cv_f1_mean": 0.8299,
+    "cv_f1_std": 0.026,
+    "cv_roc_auc_mean": 0.9113,
+    "cv_roc_auc_std": 0.018,
+    "test_accuracy": 0.8852,
+    "test_precision": 0.8387,
+    "test_recall": 0.9286,
+    "test_f1": 0.8814,
+    "test_roc_auc": 0.961
+  },
+  "data_fingerprint": "06f4eb999c06107a",
+  "n_train": 242,
+  "n_test": 61
+}
