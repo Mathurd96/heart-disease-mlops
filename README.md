@@ -2,9 +2,8 @@
 
 Predicts the presence of heart disease from 13 clinical features (UCI *Heart Disease*, Cleveland subset) and serves the model as a containerised, monitored FastAPI service, with experiment tracking (MLflow), CI/CD (GitHub Actions), Kubernetes deployment, and Prometheus/Grafana monitoring.
 
-> Educational project. Not a medical device.
 
-**Demo video:** _add link here_  |  **Report:** `docs/report.pdf` / `docs/report.docx`  |  **Deployed API:** local Kubernetes, see [Deploy](#6-deploy-to-kubernetes)
+**Demo video:**  |  **Report:** `docs/report.docx`  |  **Deployed API:** local Kubernetes, see [Deploy](#6-deploy-to-kubernetes)
 
 ![architecture](docs/architecture.png)
 
